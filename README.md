@@ -254,59 +254,69 @@ ok | 88 passed | 0 failed (17s)
 
 ## My own log (R8)
 
-Things that went wrong or surprised me while building this, with the exact messages.
+These are the things that went wrong or surprised me, with the exact messages. I wrote
+them in the order they happened.
 
-1. **`deno lint` failed on the given starter.** Six times:
-   `error[jsx-button-has-type]: button elements must have a type attribute` in
-   `ui/src/App.tsx`. The UI is given and not graded, so I excluded it in `deno.json`
-   (`"lint": { "exclude": ["ui", "drizzle"] }`) instead of editing it. Now `deno lint`
-   reports nothing.
-2. **The handout contradicts itself about login.** Step 4 says "validate the body with the
-   same schema" (password at least 8 characters), but the example test logs in with the
-   password `"wrong"` (5 characters) and expects 401. With the same schema that request is
-   a 400. I made a separate `LoginBody` with `password: z.string().min(1)`.
-3. **`TypeError: Deno.cron is not a function`.** Deno KV and `Deno.cron` are unstable.
-   Instead of adding `--unstable-kv --unstable-cron` to every task I put
-   `"unstable": ["kv", "cron"]` in `deno.json`, which also fixes the types for
-   `deno check`, the tests and the Dockerfile.
-4. **The starter's `dev` task never read `.env`**, although the handout says to copy it. I
-   added `--env-file=.env`. When the file does not exist Deno only warns:
-   ``Warning The `--env-file` flag was used, but the environment file specified '...' was not found.``
-5. **A transaction silently switched my lock timeout off.** I set
-   `PRAGMA busy_timeout=5000` on every connection. I measured it after `db.transaction()`:
-   `busy_timeout after migrate: 5000`, then `busy_timeout after a transaction: 0`. The
-   libSQL client opens a fresh connection behind the scenes after a transaction. So
-   `createUserWithWelcomeTask` calls `tuneConn()` again in a `finally`.
-6. **My first N+1 example was not an N+1.** The summary with "load the tasks, then one
-   count per status" always sends 4 queries (there are always 3 statuses), so it does not
-   grow with the data. The real N+1 is the admin list: 11 queries for 10 users, 51 for 50.
-   I measure both (Bonus 3).
-7. **The first index benchmark showed no speed-up at all.** `SELECT *` for one user and
-   one status returns about 333 rows; BEFORE 3.745 ms, AFTER 3.815 ms: copying the rows
-   costs more than finding them. I changed the benchmark to the two queries the API really
-   runs (one page of 20 rows, and the `count(*)` for `total`). Then the plan changed from
-   `SCAN tasks` to `SEARCH ... USING INDEX`.
-8. **`deno task seed` with `APP_ENV=production` gave the wrong message.** It stopped in
-   the configuration check: `Invalid configuration: - JWT_SECRET: required in production`,
-   before my own refusal. I now look at `APP_ENV` first:
+1. **`deno lint` failed on the starter.** It printed six errors like
+   `error[jsx-button-has-type]: button elements must have a type attribute`, all in
+   `ui/src/App.tsx`. The UI is given to us, so I did not want to edit it. I told Deno to
+   skip it in `deno.json` (`"lint": { "exclude": ["ui", "drizzle"] }`). After that
+   `deno lint` was clean.
+2. **The assignment text disagrees with itself about login.** It says to check the login
+   body with the same schema as register (password at least 8 characters). But its own
+   example test logs in with the password `"wrong"`, which has 5 characters, and expects
+   a 401. With the register schema that request gets a 400 first. So I made a second
+   schema, `LoginBody`, where the password only has to be there (`z.string().min(1)`). The
+   8-character rule stays on register only.
+3. **`TypeError: Deno.cron is not a function`.** I used `Deno.cron` and Deno KV, and both
+   are still "unstable" in Deno. I could have added `--unstable-kv --unstable-cron` to
+   every task, but I found it easier to write `"unstable": ["kv", "cron"]` once in
+   `deno.json`. That fixed the run, the type check, the tests and the Dockerfile together.
+4. **The `dev` task did not read my `.env` file,** even though the assignment says to copy
+   `.env.example` to `.env`. I added `--env-file=.env` to the task. If the file is
+   missing, Deno only prints a warning:
+   ``Warning The `--env-file` flag was used, but the environment
+   file specified '...' was not found.``
+5. **A transaction switched my lock timeout off.** I set `PRAGMA busy_timeout=5000` on
+   every connection so SQLite waits instead of failing when the database is locked. Then I
+   checked the value after a transaction and saw `busy_timeout after migrate: 5000` and
+   then `busy_timeout after a transaction: 0`. The libSQL client opens a new connection
+   after a transaction, and the new one does not have my setting. So
+   `createUserWithWelcomeTask` sets it again in a `finally` block (`tuneConn()`).
+6. **My first N+1 example was not an N+1.** For the summary I loaded the tasks and counted
+   them one status at a time. That always makes 4 queries, because there are always 3
+   statuses, so it does not grow with the data. The real N+1 is the admin user list: 11
+   queries for 10 users and 51 for 50 users. I measure both in Bonus 3.
+7. **My first index test showed no speed-up.** I searched `SELECT *` for one user and one
+   status. That returns about 333 rows, and the times were 3.745 ms before and 3.815 ms
+   after the index, because copying the rows costs more than finding them. I changed the
+   test to the two queries that the API really runs (one page of 20 rows, and the
+   `count(*)` for `total`). Then the plan changed from `SCAN tasks` to
+   `SEARCH ... USING INDEX`.
+8. **`deno task seed` gave the wrong message in production.** With `APP_ENV=production` it
+   stopped with `Invalid configuration: - JWT_SECRET: required in production` before my
+   own refusal could run. I now check `APP_ENV` first, so the message is
    `Refusing to seed: APP_ENV is production.`
-9. **The welcome task broke my first pagination test.** I expected `total` 3 after
-   creating 3 tasks and got 4, because registering already made one. I changed the test to
-   expect the welcome task (and wrote it down in the design section above).
-10. **An invalid path id is validated by Zod, but must be a 404.** Zod's default answer is
-    a 400. Hono's `defaultHook` receives `result.target` (`param`, `query`, `json`), so
-    the hook answers 404 only for `param`.
-
-11. **The first `git push` was rejected.**
-    `! [remote rejected] main -> main (refusing to
-    allow a Personal Access Token to create or update workflow`.github/workflows/ci.yml`without`workflow`scope)`.
-    My token only had the `repo` scope. I made a token with `repo` and `workflow`.
-12. **The next push said
-    `remote: Invalid username or token. Password authentication is not
-    supported for Git operations.`**
-    and `fatal: Authentication failed`. I had pasted the token wrongly into the hidden
-    password prompt; the third try worked.
-13. **Deno Deploy refused me: "New signups are closed".** See Bonus 19.
+9. **The welcome task broke my first pagination test.** I created 3 tasks and expected
+   `total` to be 3, but it was 4, because registering already makes one welcome task. I
+   changed the test to expect it, and I wrote it down in the design section.
+10. **A bad id in the path must be a 404, but Zod gives a 400.** For `/api/tasks/abc`
+    Zod's default answer is a 400. Hono's `defaultHook` gets `result.target` (`param`,
+    `query` or `json`), so the hook answers 404 only when the broken part is the `param`.
+11. **My first `git push` was rejected.** The message was
+    `! [remote rejected] main -> main (refusing to allow a Personal Access Token to create or
+    update workflow`.github/workflows/ci.yml`without`workflow`scope)`.
+    My token only had the `repo` permission. I made a new token with both `repo` and
+    `workflow`.
+12. **The next push said `Invalid username or token`.** The exact lines were
+    `remote: Invalid username or token. Password authentication is not supported for Git
+    operations.`
+    and `fatal: Authentication failed`. The password prompt is hidden, and my paste did
+    not go through the first time. The next try worked.
+13. **Deno Deploy would not let me in.** When I opened the console it said
+    `New signups are closed`, because Deno Deploy takes no new accounts and shuts down in
+    April 2027. So I could not do Bonus 19, and I wrote that in its section instead of
+    pretending.
 
 ## Bonuses claimed
 
