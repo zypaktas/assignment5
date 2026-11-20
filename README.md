@@ -3,8 +3,8 @@
 MIS 233 Web Based Application Programming, Assignment 5. A backend for tasks, written in
 TypeScript on Deno 2 with Hono, Drizzle (libSQL/SQLite) and Zod. Users register and log
 in, every user manages only their own tasks, every input is validated, every failure has
-one shape, and 88 tests prove it. I did Bonuses 1 to 20. The API runs live on
-Render at https://assignment5-hz4o.onrender.com (Bonus 19, last section).
+one shape, and 88 tests prove it. I did Bonuses 1 to 20. The API runs live on Render at
+https://assignment5-hz4o.onrender.com (Bonus 19, last section).
 
 ## Run it
 
@@ -315,15 +315,15 @@ them in the order they happened.
     not go through the first time. The next try worked.
 13. **Deno Deploy would not let me in.** When I opened the console it said
     `New signups are closed`, because Deno Deploy takes no new accounts and shuts down in
-    April 2027. I asked the instructor if another host was fine for Bonus 19, and the answer
-    was yes, so I used Render (see Bonus 19). The first deploy there worked without code
-    changes. The free instance goes to sleep when nobody uses it, so the first request
-    after a break takes up to 50 seconds.
+    April 2027. I asked the instructor if another host was fine for Bonus 19, and the
+    answer was yes, so I used Render (see Bonus 19). The first deploy there worked without
+    code changes. The free instance goes to sleep when nobody uses it, so the first
+    request after a break takes up to 50 seconds.
 
 ## Bonuses claimed
 
-I claim Bonuses 1 to 20 with their proof. Bonus 19 is on Render, because Deno Deploy refused
-me (see the end).
+I claim Bonuses 1 to 20 with their proof. Bonus 19 is on Render, because Deno Deploy
+refused me (see the end).
 
 ### Bonus 1: Migrations with Drizzle Kit
 
