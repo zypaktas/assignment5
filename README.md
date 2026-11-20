@@ -3,8 +3,8 @@
 MIS 233 Web Based Application Programming, Assignment 5. A backend for tasks, written in
 TypeScript on Deno 2 with Hono, Drizzle (libSQL/SQLite) and Zod. Users register and log
 in, every user manages only their own tasks, every input is validated, every failure has
-one shape, and 88 tests prove it. I did Bonuses 1 to 18 and Bonus 20; Bonus 19 is not done
-(last section).
+one shape, and 88 tests prove it. I did Bonuses 1 to 20. The API runs live on
+Render at https://assignment5-hz4o.onrender.com (Bonus 19, last section).
 
 ## Run it
 
@@ -315,12 +315,15 @@ them in the order they happened.
     not go through the first time. The next try worked.
 13. **Deno Deploy would not let me in.** When I opened the console it said
     `New signups are closed`, because Deno Deploy takes no new accounts and shuts down in
-    April 2027. So I could not do Bonus 19, and I wrote that in its section instead of
-    pretending.
+    April 2027. I asked the instructor if another host was fine for Bonus 19, and the answer
+    was yes, so I used Render (see Bonus 19). The first deploy there worked without code
+    changes. The free instance goes to sleep when nobody uses it, so the first request
+    after a break takes up to 50 seconds.
 
 ## Bonuses claimed
 
-I claim Bonuses 1 to 18 and 20 with their proof. Bonus 19 is not done (see the end).
+I claim Bonuses 1 to 20 with their proof. Bonus 19 is on Render, because Deno Deploy refused
+me (see the end).
 
 ### Bonus 1: Migrations with Drizzle Kit
 
@@ -709,7 +712,7 @@ the same id does its own lookup and gets 404; nothing is cached for a missing ta
 
 ## Bonuses 17 to 20
 
-Bonuses 17 and 18 are done and proven below. Bonus 19 is not done (Deno Deploy takes no
+Bonuses 17 and 18 are done and proven below. Bonus 19 runs on Render (Deno Deploy takes no
 new accounts) and Bonus 20 is the repository link.
 
 ### Bonus 17: Docker
@@ -821,29 +824,77 @@ The broken change lives only on the `broken-test` branch; `main` still has the c
 test and stays green. The log also shows that CI runs the same 88 tests as my machine: 87
 passed and the 1 I broke failed.
 
-### Bonus 19: Deploy (not done)
+### Bonus 19: Deploy
 
-I am **not claiming** this bonus. I could not deploy, because Deno Deploy no longer
-accepts new accounts. When I opened https://console.deno.com and signed in with GitHub,
-the page said:
+Live URL: https://assignment5-hz4o.onrender.com
+
+I first tried Deno Deploy, but when I opened https://console.deno.com and signed in with
+GitHub, the page said:
 
 > New signups are closed. Deno Deploy is winding down and will shut down in April 2027. We
 > are no longer taking on new customers, so it is not possible to create a new
 > organization.
 
-What I did prepare:
+I asked the instructor whether another service was fine, and the answer was yes. So the
+API runs on Render (Web Service, Docker runtime, free tier) with a hosted libSQL database
+on Turso (`tasks-api`, region `aws-eu-central-1`).
 
-- A hosted libSQL database on Turso (`tasks-api`, region `aws-eu-central-1`). The code
-  already reads `DATABASE_URL` and `DATABASE_AUTH_TOKEN` from the environment and passes
-  them to `createClient({ url, authToken })` (`createDb` in `src/db.ts`). The settings
-  that only make sense for a file (WAL, busy timeout) are skipped for a remote database.
-- The settings for production: `APP_ENV=production`, a long random `JWT_SECRET`
-  (`openssl rand -base64 32`), `DATABASE_URL` and `DATABASE_AUTH_TOKEN`. No secret is in
-  Git; `.env` is in `.gitignore` and `.env.production` only has placeholders.
+How I did it:
 
-I have not run the API against the Turso database, so I do not know yet whether the libSQL
-client works there without changes. If the instructor allows another host for this bonus
-(for example one that runs my `Dockerfile`), I will do it there.
+1. On Turso I created the database and a token. The code already reads `DATABASE_URL` and
+   `DATABASE_AUTH_TOKEN` and passes them to `createClient({ url, authToken })` (`createDb`
+   in `src/db.ts`). The settings that only make sense for a file (WAL, busy timeout) are
+   skipped for a remote database.
+2. On Render I made a Web Service from the GitHub repo `zypaktas/assignment5`, runtime
+   Docker, so it builds my `Dockerfile` from Bonus 17.
+3. I set four environment variables in the Render dashboard: `APP_ENV=production`,
+   `DATABASE_URL`, `DATABASE_AUTH_TOKEN` and `JWT_SECRET` (made with
+   `openssl rand -base64 32`). No secret is in Git; `.env` is in `.gitignore` and
+   `.env.production` only has placeholders.
+4. I pressed Deploy. The log ended with `Listening on http://0.0.0.0:10000/`,
+   `{"msg":"listening","port":10000,"env":"production"}` and `Your service is live`. The
+   migrations ran against Turso on start.
+
+The checks, run from my laptop against the public URL:
+
+```text
+$ curl -i https://assignment5-hz4o.onrender.com/health
+HTTP/2 200
+content-type: application/json
+x-render-origin-server: Render
+
+{"ok":true}
+
+$ curl -i -X POST https://assignment5-hz4o.onrender.com/auth/register \
+    -H "Content-Type: application/json" \
+    -d '{"email":"render@example.com","password":"secret123"}'
+HTTP/2 201
+content-type: application/json
+
+{"id":1,"email":"render@example.com","role":"user"}
+
+$ curl -i -X POST https://assignment5-hz4o.onrender.com/auth/register \
+    -H "Content-Type: application/json" \
+    -d '{"email":"render@example.com","password":"secret123"}'
+HTTP/2 409
+content-type: application/json
+
+{"error":"email already registered","requestId":"1466f40c-c2e0-423e-b386-df5addd7db92"}
+
+$ curl -i -X POST https://assignment5-hz4o.onrender.com/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"email":"render@example.com","password":"secret123"}'
+HTTP/2 200
+content-type: application/json
+
+{"token":"eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoidXNlciIsInN1YiI6IjEiLCJpYXQiOjE3OTUxODIyMzcsImV4cCI6MTc5NTE4NTgzN30.w5a82Ov0jVFUy0UxVwG7oTJ3XCkhIWyblPBP9Q5t3gA"}
+```
+
+The 409 on the second register shows that the user was stored in Turso and not only in
+memory. The login token is from my own test account.
+
+The free instance sleeps after a while without requests, so the first request can take 50
+seconds or more.
 
 ### Bonus 20: Git repository
 
@@ -853,6 +904,7 @@ Repository: https://github.com/zypaktas/assignment5
 public, so the instructor can read it. The history so far:
 
 ```text
+Add Render deploy proof to README (Bonus 19)
 Add CI proof to README (Bonus 18)
 Break health test on purpose to see CI fail      (branch broken-test)
 Add Docker proof to README (Bonus 17)
