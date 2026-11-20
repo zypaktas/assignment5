@@ -3,8 +3,8 @@
 MIS 233 Web Based Application Programming, Assignment 5. A backend for tasks, written in
 TypeScript on Deno 2 with Hono, Drizzle (libSQL/SQLite) and Zod. Users register and log
 in, every user manages only their own tasks, every input is validated, every failure has
-one shape, and 88 tests prove it. I did Bonuses 1 to 18 completely; Bonuses 19 and 20 are
-still being finished (last section).
+one shape, and 88 tests prove it. I did Bonuses 1 to 18 and Bonus 20; Bonus 19 is not done
+(last section).
 
 ## Run it
 
@@ -297,9 +297,20 @@ Things that went wrong or surprised me while building this, with the exact messa
     a 400. Hono's `defaultHook` receives `result.target` (`param`, `query`, `json`), so
     the hook answers 404 only for `param`.
 
+11. **The first `git push` was rejected.**
+    `! [remote rejected] main -> main (refusing to
+    allow a Personal Access Token to create or update workflow`.github/workflows/ci.yml`without`workflow`scope)`.
+    My token only had the `repo` scope. I made a token with `repo` and `workflow`.
+12. **The next push said
+    `remote: Invalid username or token. Password authentication is not
+    supported for Git operations.`**
+    and `fatal: Authentication failed`. I had pasted the token wrongly into the hidden
+    password prompt; the third try worked.
+13. **Deno Deploy refused me: "New signups are closed".** See Bonus 19.
+
 ## Bonuses claimed
 
-I claim Bonuses 1 to 18 with their proof. Bonuses 19 and 20 are at the end.
+I claim Bonuses 1 to 18 and 20 with their proof. Bonus 19 is not done (see the end).
 
 ### Bonus 1: Migrations with Drizzle Kit
 
@@ -688,9 +699,8 @@ the same id does its own lookup and gets 404; nothing is cached for a missing ta
 
 ## Bonuses 17 to 20
 
-Bonuses 17 and 18 are done and proven below. Bonus 19 needs a Deno Deploy / Turso account
-and Bonus 20 needs the repository link; the lines marked **TODO** are the proof I still
-have to paste. I do not claim a bonus until its TODO is filled in.
+Bonuses 17 and 18 are done and proven below. Bonus 19 is not done (Deno Deploy takes no
+new accounts) and Bonus 20 is the repository link.
 
 ### Bonus 17: Docker
 
@@ -801,24 +811,47 @@ The broken change lives only on the `broken-test` branch; `main` still has the c
 test and stays green. The log also shows that CI runs the same 88 tests as my machine: 87
 passed and the 1 I broke failed.
 
-### Bonus 19: Deploy
+### Bonus 19: Deploy (not done)
 
-The code is ready for a hosted database: `DATABASE_URL=libsql://...` and
-`DATABASE_AUTH_TOKEN` go to `createClient({ url, authToken })` (`createDb` in
-`src/db.ts`); the file-only settings (WAL, busy timeout) are skipped for a remote
-database. On Deno Deploy the disk is not kept, so uploaded images will not survive there,
-and `KV_PATH` stays unset (Deno KV is built in). Steps: create a Turso database and token,
-`deno deploy create`, set `APP_ENV=production`, `JWT_SECRET`, `DATABASE_URL`,
-`DATABASE_AUTH_TOKEN` in the dashboard, `deno deploy --prod`. I did not test this part (it
-needs an account).
+I am **not claiming** this bonus. I could not deploy, because Deno Deploy no longer
+accepts new accounts. When I opened https://console.deno.com and signed in with GitHub,
+the page said:
 
-**TODO (my own run):** the public URL that answers `/health`, the register and login with
-curl, and in the log what went wrong.
+> New signups are closed. Deno Deploy is winding down and will shut down in April 2027. We
+> are no longer taking on new customers, so it is not possible to create a new
+> organization.
+
+What I did prepare:
+
+- A hosted libSQL database on Turso (`tasks-api`, region `aws-eu-central-1`). The code
+  already reads `DATABASE_URL` and `DATABASE_AUTH_TOKEN` from the environment and passes
+  them to `createClient({ url, authToken })` (`createDb` in `src/db.ts`). The settings
+  that only make sense for a file (WAL, busy timeout) are skipped for a remote database.
+- The settings for production: `APP_ENV=production`, a long random `JWT_SECRET`
+  (`openssl rand -base64 32`), `DATABASE_URL` and `DATABASE_AUTH_TOKEN`. No secret is in
+  Git; `.env` is in `.gitignore` and `.env.production` only has placeholders.
+
+I have not run the API against the Turso database, so I do not know yet whether the libSQL
+client works there without changes. If the instructor allows another host for this bonus
+(for example one that runs my `Dockerfile`), I will do it there.
 
 ### Bonus 20: Git repository
 
-`.gitignore` leaves out `.env`, `*.db`, `node_modules`, `uploads/`.
+Repository: https://github.com/zypaktas/assignment5
 
-**TODO (my own run):** create the repository, commit in steps over several days (at least
-five commits), give the instructor access as announced in Moodle, and put the link here:
-`<link>`.
+`.gitignore` leaves out `.env`, `*.db`, `node_modules` and `uploads/`. The repository is
+public, so the instructor can read it. The history so far:
+
+```text
+Add CI proof to README (Bonus 18)
+Break health test on purpose to see CI fail      (branch broken-test)
+Add Docker proof to README (Bonus 17)
+Add README with design notes, curl outputs and bonuses
+Add Dockerfile and CI workflow
+Add seed, benchmark and demo scripts, and the UI
+Add test suite
+Auth, routes, tasks API, cache, uploads, websocket, rate limit
+Project setup: config, schema, Drizzle migrations, connection pool
+```
+
+The branch `broken-test` stays on GitHub because the red run of Bonus 18 belongs to it.
