@@ -3,8 +3,8 @@
 MIS 233 Web Based Application Programming, Assignment 5. A backend for tasks, written in
 TypeScript on Deno 2 with Hono, Drizzle (libSQL/SQLite) and Zod. Users register and log
 in, every user manages only their own tasks, every input is validated, every failure has
-one shape, and 88 tests prove it. I did Bonuses 1 to 16 completely; Bonuses 17 to 20 need
-an account or my own machine, so they are prepared but not claimed yet (last section).
+one shape, and 88 tests prove it. I did Bonuses 1 to 17 completely; Bonuses 18 to 20 need
+accounts, so they are prepared but not claimed yet (last section).
 
 ## Run it
 
@@ -299,9 +299,8 @@ Things that went wrong or surprised me while building this, with the exact messa
 
 ## Bonuses claimed
 
-I claim Bonuses 1 to 16 here with their proof. Bonuses 17 to 20 are at the end: the files
-are in the project, but the proof needs commands I have to run on my own machine and
-accounts.
+I claim Bonuses 1 to 17 with their proof. Bonuses 18 to 20 are at the end: the files are
+in the project, but the proof needs accounts that I still have to set up.
 
 ### Bonus 1: Migrations with Drizzle Kit
 
@@ -688,12 +687,11 @@ reads stay at 1 (hits); after a `PUT` the next read goes to the database again a
 the new title; after a `DELETE` the answer is 404 at once; a different user's request for
 the same id does its own lookup and gets 404; nothing is cached for a missing task.
 
-## Bonuses 17 to 20: files are ready, proof is mine to produce
+## Bonuses 17 to 20
 
-These four need Docker, GitHub or GitLab, and a Deno Deploy / Turso account on my own
-computer. I prepared everything in the project; the lines marked **TODO** are the proof I
-still have to paste from my real runs. I do not claim a bonus below until its TODO is
-filled in.
+Bonus 17 is done and proven below. Bonuses 18 to 20 need GitHub or GitLab and a Deno
+Deploy / Turso account. I prepared the files; the lines marked **TODO** are the proof I
+still have to paste from my real runs. I do not claim a bonus until its TODO is filled in.
 
 ### Bonus 17: Docker
 
@@ -724,8 +722,55 @@ To make the image smaller: the image already leaves out `ui`, `tests`, `scripts`
 databases (`.dockerignore`); I could also use `denoland/deno:distroless` as the base
 image.
 
-**TODO (my own run):** paste the build, the two `docker run`s, the `409` after the
-restart, the output of `docker images tasks-api` and the size.
+**My run (macOS, Docker Desktop).** The build finished without errors (12 of 12 steps):
+
+```text
+$ docker build -t tasks-api .
+[+] Building 23.0s (12/12) FINISHED                        docker:desktop-linux
+ => [3/7] COPY deno.json deno.lock* ./
+ => [4/7] COPY src ./src
+ => [5/7] COPY drizzle ./drizzle
+ => [6/7] RUN deno cache src/main.ts
+ => [7/7] RUN mkdir /data && chown deno:deno /data
+ => => naming to docker.io/library/tasks-api:latest
+```
+
+First run: the server answers and a user is registered.
+
+```text
+$ docker volume create tasksdata
+tasksdata
+$ docker run -d --rm --name tasks -p 8000:8000 -v tasksdata:/data tasks-api
+ca8b7eb3dc9c0b7e01e72010b4873c475f57af3e67d7d5b1634feaf3c428a88d
+$ curl -i http://localhost:8000/health
+HTTP/1.1 200 OK
+{"ok":true}
+$ curl -i -X POST http://localhost:8000/auth/register -H "Content-Type: application/json" \
+    -d '{"email":"docker@example.com","password":"secret123"}'
+HTTP/1.1 201 Created
+{"id":1,"email":"docker@example.com","role":"user"}
+```
+
+Then I stopped the container (`--rm` deletes it), started a **new** container on the same
+volume and registered the same email. It answers `409`, so the data survived the
+container:
+
+```text
+$ docker stop tasks
+tasks
+$ docker run -d --rm --name tasks -p 8000:8000 -v tasksdata:/data tasks-api
+46e3e4859f47fc9d6d9c249d480e2ccc74bc6123e6e8f6f1bf8b794310e0e1da
+$ curl -i -X POST http://localhost:8000/auth/register -H "Content-Type: application/json" \
+    -d '{"email":"docker@example.com","password":"secret123"}'
+HTTP/1.1 409 Conflict
+{"error":"email already registered","requestId":"2e796d70-564a-45e3-9cef-fe94d3185055"}
+$ docker stop tasks
+$ docker images tasks-api
+IMAGE              ID             DISK USAGE   CONTENT SIZE
+tasks-api:latest   f4f3f813d207        372MB         91.1MB
+```
+
+The image is 372 MB on disk (91.1 MB compressed content).
 
 ### Bonus 18: Continuous integration
 
