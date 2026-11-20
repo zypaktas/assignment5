@@ -3,8 +3,8 @@
 MIS 233 Web Based Application Programming, Assignment 5. A backend for tasks, written in
 TypeScript on Deno 2 with Hono, Drizzle (libSQL/SQLite) and Zod. Users register and log
 in, every user manages only their own tasks, every input is validated, every failure has
-one shape, and 88 tests prove it. I did Bonuses 1 to 17 completely; Bonuses 18 to 20 need
-accounts, so they are prepared but not claimed yet (last section).
+one shape, and 88 tests prove it. I did Bonuses 1 to 18 completely; Bonuses 19 and 20 are
+still being finished (last section).
 
 ## Run it
 
@@ -299,8 +299,7 @@ Things that went wrong or surprised me while building this, with the exact messa
 
 ## Bonuses claimed
 
-I claim Bonuses 1 to 17 with their proof. Bonuses 18 to 20 are at the end: the files are
-in the project, but the proof needs accounts that I still have to set up.
+I claim Bonuses 1 to 18 with their proof. Bonuses 19 and 20 are at the end.
 
 ### Bonus 1: Migrations with Drizzle Kit
 
@@ -689,9 +688,9 @@ the same id does its own lookup and gets 404; nothing is cached for a missing ta
 
 ## Bonuses 17 to 20
 
-Bonus 17 is done and proven below. Bonuses 18 to 20 need GitHub or GitLab and a Deno
-Deploy / Turso account. I prepared the files; the lines marked **TODO** are the proof I
-still have to paste from my real runs. I do not claim a bonus until its TODO is filled in.
+Bonuses 17 and 18 are done and proven below. Bonus 19 needs a Deno Deploy / Turso account
+and Bonus 20 needs the repository link; the lines marked **TODO** are the proof I still
+have to paste. I do not claim a bonus until its TODO is filled in.
 
 ### Bonus 17: Docker
 
@@ -778,8 +777,29 @@ Files: `.github/workflows/ci.yml` (and the same four commands for GitLab in
 `.gitlab-ci.yml`): `deno fmt --check`, `deno lint`, `deno task check`, `deno task test`. I
 ran these four commands locally and all pass (see "Run it").
 
-**TODO (my own run):** the link to a green run, the link to a red run (a test that I broke
-on purpose in a branch), and a few lines in the log above about what I did.
+**Green run (branch `main`, all four steps pass):**
+https://github.com/zypaktas/assignment5/actions/runs/44741163727
+
+**Red run (branch `broken-test`, commit `329caad`).** On a separate branch I changed one
+line in `tests/health_test.ts` (`assertEquals(res.status, 200)` became `201`) and pushed
+it. The workflow stopped at the `deno task test` step. This is the real log:
+
+```text
+GET /health answers 200 and { ok: true } => ./tests/health_test.ts:5:6
+error: AssertionError: Values are not equal.
+    [Diff] Actual / Expected
+-   200
++   201
+FAILED | 87 passed | 1 failed (16s)
+error: Test failed
+Error: Process completed with exit code 1.
+```
+
+https://github.com/zypaktas/assignment5/actions/runs/44741751321
+
+The broken change lives only on the `broken-test` branch; `main` still has the correct
+test and stays green. The log also shows that CI runs the same 88 tests as my machine: 87
+passed and the 1 I broke failed.
 
 ### Bonus 19: Deploy
 
